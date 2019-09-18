@@ -86,7 +86,7 @@ bool AS5147P::_spiCalcEvenParity(uint16_t value){
 int AS5147P::getRotation(){
 	int rotation;
 
-	rotation = AS5147P::getRawRotation() - _position;
+	rotation = AS5147P::getRawRotation() - _zero_position;
 	if(rotation > 8191) rotation = -((0x3FFF)-rotation); //more than -180
 
 
@@ -101,7 +101,7 @@ int AS5147P::getRotation(){
 int AS5147P::getDegree(){
 	uint16_t rotation;
 	
-	rotation = AS5147P::getRawRotation() - _position;
+	rotation = AS5147P::getRawRotation() - _zero_position;
 
 	if(_errorFlag){
 		return -1;
@@ -155,15 +155,17 @@ uint16_t AS5147P::getErrors(){
 /*
  * Set the zero position
  */
+void AS5147P::setZeroPosition(){_zero_position = getRawRotation();}
+
 void AS5147P::setZeroPosition(uint16_t arg_position){
-	_position = arg_position % 0x3FFF;
+	_zero_position = arg_position % 0x3FFF;
 }
 
 /*
  * Returns the current zero position
  */
 uint16_t AS5147P::getZeroPosition(){
-	return _position;
+	return _zero_position;
 }
 
 /*
@@ -189,9 +191,9 @@ uint16_t AS5147P::read(uint16_t registerAddress){
 	uint8_t left_byte = ( command >> 8 ) & 0xFF;
 
 #ifdef AS5147P_DEBUG
-	Serial.print(F("Read (0x");
+	Serial.print(F("Read (0x"));
 	Serial.print(registerAddress, HEX);
-	Serial.print(F(") with command: 0b");
+	Serial.print(F(") with command: 0b"));
 	Serial.println(command, HEX);
 #endif
 
@@ -215,16 +217,16 @@ uint16_t AS5147P::read(uint16_t registerAddress){
 	SPI.endTransaction();
 
 #ifdef AS5147P_DEBUG
-	Serial.print(F("Read returned: ");
+	Serial.print(F("Read returned: "));
 	Serial.print(left_byte, BIN);
-	Serial.print(F(" ");
+	Serial.print(F(" "));
 	Serial.println(right_byte, BIN);
 #endif
 
 	//Check if the error bit is set
 	if (left_byte & 0x40) {
 #ifdef AS5147P_DEBUG
-		Serial.println(F("Setting error bit");
+		Serial.println(F("Setting error bit"));
 #endif
 		_errorFlag = true;
 	}
@@ -256,9 +258,9 @@ uint16_t AS5147P::write(uint16_t registerAddress, uint16_t data) {
 	uint8_t left_byte = ( command >> 8 ) & 0xFF;
 
 #ifdef AS5147P_DEBUG
-	Serial.print(F("Write (0x");
+	Serial.print(F("Write (0x"));
 	Serial.print(registerAddress, HEX);
-	Serial.print(F(") with command: 0b");
+	Serial.print(F(") with command: 0b"));
 	Serial.println(command, BIN);
 #endif
 
@@ -279,7 +281,7 @@ uint16_t AS5147P::write(uint16_t registerAddress, uint16_t data) {
 	left_byte = ( dataToSend >> 8 ) & 0xFF;
 
 #ifdef AS5147P_DEBUG
-	Serial.print(F("Sending data to write: ");
+	Serial.print(F("Sending data to write: "));
 	Serial.println(dataToSend, BIN);
 #endif
 

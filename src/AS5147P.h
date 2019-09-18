@@ -87,9 +87,12 @@ class AS5147P{
 	uint16_t getErrors();
 
 	/*
-	 * Set the zero position
+	 * Set the zero position. If no argument is specified, sets zero to getRawRotation.
 	 */
+	void setZeroPosition();
 	void setZeroPosition(uint16_t arg_position);
+
+	
 
 	/*
 	 * Returns the current zero position
@@ -97,7 +100,8 @@ class AS5147P{
 	uint16_t getZeroPosition();
 
 	/*
-	 * Check if an error has been encountered.
+	 * Check if an error has been encountered in the previous reading frame.
+	 * @return 0 if no error, 1 if error
 	 */
 	bool error();
 

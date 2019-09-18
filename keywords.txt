@@ -1,0 +1,27 @@
+#######################################
+#   Syntax Coloring Map for AS5147P   #
+#######################################
+
+#######################################
+#       Datatypes (KEYWORD1)          # 
+#######################################
+
+AS5147P	KEYWORD1
+
+#######################################
+#  Methods and Functions (KEYWORD2)   #
+#######################################
+
+setZeroPosition	KEYWORD2
+getRawRotation	KEYWORD2
+getRotation	KEYWORD2
+getDegree	KEYWORD2
+getErrors	KEYWORD2
+getMagnitude	KEYWORD2
+getGain	KEYWORD2
+init	KEYWORD2
+error	KEYWORD2
+
+#######################################
+#         Constants (LITERAL1)        #
+#######################################
