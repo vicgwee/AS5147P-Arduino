@@ -24,22 +24,6 @@ class AS5147P{
 	 */
 	void close();
 
-	/*
-	 * Read a register from the sensor
-	 * Takes the address of the register as a 16 bit uint16_t
-	 * Returns the value of the register
-	 */
-	uint16_t read(uint16_t registerAddress);
-
-	/*
-	 * Write to a register
-	 * Takes the 16-bit address of the target register and the 16 bit uint16_t of data
-	 * to be written to that register
-	 * Returns the value of the register after the write has been performed. This
-	 * is read back from the sensor to ensure a sucessful write.
-	 */
-	uint16_t write(uint16_t registerAddress, uint16_t data);
-
 	/**
 	 * Get the rotation of the sensor relative to the zero position.
 	 *
@@ -93,7 +77,6 @@ class AS5147P{
 	void setZeroPosition(uint16_t arg_position);
 
 	
-
 	/*
 	 * Returns the current zero position
 	 */
@@ -105,11 +88,33 @@ class AS5147P{
 	 */
 	bool error();
 
+	/*
+	 * Read a register from the sensor
+	 * Takes the address of the register as a 16 bit uint16_t
+	 * Returns the value of the register
+	 */
+	uint16_t read(uint16_t registerAddress);
+
+	/*
+	 * Write to a register
+	 * Takes the 16-bit address of the target register and the 16 bit uint16_t of data
+	 * to be written to that register
+	 * Returns the value of the register after the write has been performed. This
+	 * is read back from the sensor to ensure a sucessful write.
+	 */
+	uint16_t write(uint16_t registerAddress, uint16_t data);
+
 	private:
 
 	uint16_t _zero_position;
-	bool _errorFlag;
+	bool _error_flag;
 	uint8_t _cs;
 	bool _spiCalcEvenParity(uint16_t);
+	/*
+ 	* Takes a 16-bit value to be sent (default is NOP = 0x0000)
+ 	* Returns the value read during the SPI transfer.
+ 	* @return uint16_t
+	*/
+	uint16_t _readWriteSPI(uint16_t = 0x0000);
 };
 #endif

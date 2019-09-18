@@ -14,7 +14,7 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
   encoder0.init();
-  encoder0.setZeroPosition(); 
+  encoder0.setZeroPosition(zero_position); 
 }
 
 void loop() {

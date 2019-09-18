@@ -2,10 +2,10 @@
 
 #include <AS5147P.h>
 
-#define AS5147P_DEBUG
+//#define AS5147P_DEBUG
 
-// 1MHz clock (AMS should be able to accept up to 10MHz)
-#define SPI_SETTINGS SPISettings(1000000, MSBFIRST, SPI_MODE1)
+// 8MHz clock (AMS should be able to accept up to 10MHz)
+#define SPI_SETTINGS SPISettings(8000000, MSBFIRST, SPI_MODE1)
 #define READCOMMAND 0b0100000000000000 // PAR=0 R/W=R
 #define WRITECOMMAND  0b0000000000000000 // PAR=0 R/W=W
 
@@ -13,10 +13,10 @@ namespace AS5147P_REGISTERS
 {
 //Volatile Registers
 const int CLEAR_ERROR_FLAG              = 0x0001;
-const int PROGRAMMING_CONTROL           = 0x0003;
+//const int PROGRAMMING_CONTROL           = 0x0003;
 const int DIAG_AGC                      = 0x3FFC;
 const int MAGNITUDE                     = 0x3FFD;
-const int ANGLE_UNCOM                   = 0x3FFE;
+//const int ANGLE_UNCOM                   = 0x3FFE;
 const int ANGLE                         = 0x3FFF;
 
 /*Non-Volatile Registers
@@ -94,7 +94,7 @@ int AS5147P::getRotation(){
 }
 
 /**
- * Get the angle in degrees of the sensor relative to the zero position, and -1 if error flag is set.
+ * Get the angle in degrees (0-359) of the sensor relative to the zero position, but -1 if error flag is set.
  *
  * @return {int} between -1 and 359
  */
@@ -103,7 +103,7 @@ int AS5147P::getDegree(){
 	
 	rotation = AS5147P::getRawRotation() - _zero_position;
 
-	if(_errorFlag){
+	if(_error_flag){
 		return -1;
 	}
 	else if (rotation >> 15){  //rotation is negative
@@ -172,7 +172,7 @@ uint16_t AS5147P::getZeroPosition(){
  * Check if an error has been encountered.
  */
 bool AS5147P::error(){
-	return _errorFlag;
+	return _error_flag;
 }
 
 /*
@@ -186,9 +186,6 @@ uint16_t AS5147P::read(uint16_t registerAddress){
 	//Add a parity bit on the the MSB
 	command |= ((uint16_t)_spiCalcEvenParity(command)<<15);
 
-	//Split the command into two uint8_ts
-	uint8_t right_byte = command & 0xFF;
-	uint8_t left_byte = ( command >> 8 ) & 0xFF;
 
 #ifdef AS5147P_DEBUG
 	Serial.print(F("Read (0x"));
@@ -201,41 +198,32 @@ uint16_t AS5147P::read(uint16_t registerAddress){
 	SPI.beginTransaction(SPI_SETTINGS);
 
 	//Send the command
-	digitalWrite(_cs, LOW);
-	SPI.transfer(left_byte);
-	SPI.transfer(right_byte);
-	digitalWrite(_cs,HIGH);
+	_readWriteSPI(command);
 
-	delayMicroseconds(1);
 	//Now read the response
-	digitalWrite(_cs, LOW);
-	left_byte = SPI.transfer(0x00);
-	right_byte = SPI.transfer(0x00);
-	digitalWrite(_cs, HIGH);
+	uint16_t result = _readWriteSPI();
 
 	//SPI - end transaction
 	SPI.endTransaction();
 
 #ifdef AS5147P_DEBUG
 	Serial.print(F("Read returned: "));
-	Serial.print(left_byte, BIN);
-	Serial.print(F(" "));
-	Serial.println(right_byte, BIN);
+	Serial.print(result, BIN);
 #endif
 
 	//Check if the error bit is set
-	if (left_byte & 0x40) {
+	if (result & 0x4000) {
 #ifdef AS5147P_DEBUG
 		Serial.println(F("Setting error bit"));
 #endif
-		_errorFlag = true;
+		_error_flag = true;
 	}
 	else {
-		_errorFlag = false;
+		_error_flag = false;
 	}
 
 	//Return the data, stripping the parity and error bits
-	return (( ( left_byte & 0xFF ) << 8 ) | ( right_byte & 0xFF )) & ~0xC000;
+	return result & ~0xC000;
 }
 
 
@@ -249,13 +237,11 @@ uint16_t AS5147P::read(uint16_t registerAddress){
 uint16_t AS5147P::write(uint16_t registerAddress, uint16_t data) {
 
 	uint16_t command = registerAddress | WRITECOMMAND;
+	uint16_t data_to_send = data | WRITECOMMAND;
 
 	//Add a parity bit on the the MSB
 	command |= ((uint16_t)_spiCalcEvenParity(command)<<15);
-
-	//Split the command into two uint8_ts
-	uint8_t right_byte = command & 0xFF;
-	uint8_t left_byte = ( command >> 8 ) & 0xFF;
+	data_to_send |= ((uint16_t)_spiCalcEvenParity(data_to_send)<<15);
 
 #ifdef AS5147P_DEBUG
 	Serial.print(F("Write (0x"));
@@ -268,38 +254,34 @@ uint16_t AS5147P::write(uint16_t registerAddress, uint16_t data) {
 	SPI.beginTransaction(SPI_SETTINGS);
 
 	//Start the write command with the target address
-	digitalWrite(_cs, LOW);
-	SPI.transfer(left_byte);
-	SPI.transfer(right_byte);
-	digitalWrite(_cs,HIGH);
+	_readWriteSPI(command);
 	
-	uint16_t dataToSend = data | WRITECOMMAND ;
-
-	//Craft another packet including the data and parity
-	dataToSend |= ((uint16_t)_spiCalcEvenParity(dataToSend)<<15);
-	right_byte = dataToSend & 0xFF;
-	left_byte = ( dataToSend >> 8 ) & 0xFF;
-
 #ifdef AS5147P_DEBUG
 	Serial.print(F("Sending data to write: "));
-	Serial.println(dataToSend, BIN);
+	Serial.println(data_to_send, BIN);
 #endif
 
 	//Now send the data packet
-	digitalWrite(_cs,LOW);
-	SPI.transfer(left_byte);
-	SPI.transfer(right_byte);
-	digitalWrite(_cs,HIGH);
+	_readWriteSPI(data_to_send);
 	
 	//Send a NOP to read the new data in the register
-	digitalWrite(_cs, LOW);
-	left_byte =-SPI.transfer(0x00);
-	right_byte = SPI.transfer(0x00);
-	digitalWrite(_cs, HIGH);
+	uint16_t result = _readWriteSPI();
 
 	//SPI - end transaction
 	SPI.endTransaction();
 
 	//Return the data, stripping the parity and error bits
-	return (( ( left_byte & 0xFF ) << 8 ) | ( right_byte & 0xFF )) & ~0xC000;
+	return result & ~0xC000;
+}
+
+/*
+ * Takes a 16-bit value to be sent (default is NOP = 0x0000)
+ * Returns the value read during the SPI transfer.
+ * @return uint16_t
+ */
+uint16_t AS5147P::_readWriteSPI(uint16_t data_out){
+	digitalWrite(_cs,LOW);
+	uint16_t data_in = SPI.transfer16(data_out);
+	digitalWrite(_cs,HIGH);
+	return data_in;
 }
